@@ -103,6 +103,54 @@ for binary secrets.
 The current user is not an admin (reveal-secret creates a temporary
 service, which is a protected mutation). Switch to an admin context.
 
+## Port-forward
+
+**"Port-forward requires a valid Business Edition license."**
+The license is missing or expired. Open `:license` and press `<s>` to
+enter your key.
+
+**"local port 8080 is already in use; pick another."**
+Something else on your machine is bound to that port. Choose a different
+local port, or pass `0` to let the OS pick an ephemeral one — the chosen
+port will be displayed in the dialog and the list view.
+
+**"local ports below 1024 are not supported; pick 1024–65535."**
+Privileged-port binding requires root. Use a port ≥ 1024.
+
+**"forward closed: target port not reachable."**
+The container is up but nothing inside it is listening on the requested
+port. Check the service's exposed ports — typo, wrong port number, or
+the service has not finished starting. The forward closes the local
+listener as soon as the agent reports `dial: connection refused`.
+
+**"forward closed: agent disconnected."**
+The on-node agent is unreachable: the agent service has crashed or
+restarted, or the overlay path between the rbac-proxy and the agent
+broke. Run `:bootstrap --check` to verify the infrastructure stack is
+healthy. The forward does **not** auto-reconnect — reopen it once the
+agent is back.
+
+**"forward target task is no longer running."**
+The container backing the forward has restarted, scaled away, or moved
+to a different node. Reopen the forward — it will pick whichever replica
+is alive when you reopen, which may now live on a different node.
+
+**"forward on protected stack is not permitted" (admin gets a 403).**
+Port-forwarding into the bootstrap stack itself (default
+`swarmcli-infra`) is blocked for everyone — admin too. Use the host
+Docker socket on a manager node, or the proxy's internal listener
+(`PROXY_INTERNAL_LISTEN`).
+
+**"Permission denied: forwarding to <stack> requires admin role."**
+Non-admin user attempting to forward to a target gated to admin only.
+Switch to an admin context, or have the relevant target made
+non-protected if appropriate.
+
+**The forward suddenly closes after ~30 minutes of inactivity.**
+That's the idle-timeout. Override with
+`SWARMCLI_FORWARD_IDLE_TIMEOUT=2h` (or any Go duration up to 24 h)
+before launching SwarmCLI.
+
 ## RBAC users
 
 **Onboarding URL returns "token expired" or "not found".**

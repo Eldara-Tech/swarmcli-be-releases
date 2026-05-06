@@ -39,13 +39,20 @@ Two roles are defined: `admin` and `user`.
 | Read API (list, inspect, logs) | ✓ | ✓ |
 | Service create / update / remove on protected stack | ✓ | ✗ (403) |
 | Exec / attach into a service task on protected stack | ✓ | ✗ (403) |
+| Exec / attach into a non-protected service task | ✓ | ✓ |
+| Port-forward (`:port-forward`) to a non-protected service task | ✓ | ✓ |
+| Port-forward to a service task on protected stack | ✗ | ✗ |
 | Connect a container to / disconnect from the bootstrap overlay (`swarmcli-agent-net`) | ✗ | ✗ |
 | `docker swarm leave` | ✗ | ✗ |
 
 The "protected stack" is the bootstrap stack itself (default
 `swarmcli-infra`). Read-only operations are unrestricted; mutations and
-exec into the proxy/agent infrastructure are blocked even for admins.
-Network-pivot and swarm-leave are blocked for **everyone** going through
+exec into the proxy/agent infrastructure are blocked for non-admins, and
+**port-forwarding into the protected stack is blocked even for admins**
+— a long-lived TCP tunnel through the proxy you administer is a foot-gun
+and an exfil channel an admin-cert compromise could exploit (same
+rationale as the network-pivot block). Network-pivot, swarm-leave, and
+protected-stack port-forward are blocked for **everyone** going through
 the proxy — these are guards against admin-cert compromise, not role
 gates.
 
