@@ -192,6 +192,37 @@ A forward does not survive these events:
 - **30 minutes of zero traffic.** The idle timeout closes the forward.
   Override via `SWARMCLI_FORWARD_IDLE_TIMEOUT` (capped at 24 h).
 
+### Host kernel requirements
+
+The agent dials `127.0.0.1:<port>` **inside the target container's
+network namespace** via `setns(2)` — the same mechanism `docker exec`
+uses internally. This requires two capabilities on the agent service,
+which the bootstrap stack template grants automatically:
+
+| Capability | Why |
+|---|---|
+| `CAP_SYS_ADMIN` | Required for the `setns(2)` call into the target's net namespace. |
+| `CAP_SYS_PTRACE` | Required to open `/hostproc/<pid>/ns/net` when the target container's PID 1 runs as a **non-root** uid. The kernel gates the symlink read through `ptrace_may_access`, which passes on either uid match or `CAP_SYS_PTRACE` in the target's user namespace. Containers that drop privileges (mysql=999, postgres=70, redis=999, grafana=472, prometheus=65534, …) all rely on this cap. |
+
+Yama enforcement (`/proc/sys/kernel/yama/ptrace_scope = 1`, the default
+on Ubuntu / Debian / Fedora) is fully supported. The agent also
+bind-mounts the host's `/proc` at `/hostproc:ro` and reads
+`HOST_PROC=/hostproc` so it can resolve host-level container PIDs from
+its own PID namespace.
+
+If you bootstrapped on a swarm before `CAP_SYS_PTRACE` was granted by
+the template, re-run `:bootstrap` to apply the current stack spec. The
+agent logs `WARN: agent missing CAP_SYS_PTRACE` at startup when the cap
+is absent, so the misconfiguration surfaces in
+`docker service logs <stack>_agent` rather than only on the next
+port-forward attempt.
+
+**Known limitation — SELinux enforcing hosts.** RHEL / CentOS / Fedora
+with `container_t` enforcing may still deny the procfs ns-symlink read
+even with both caps present. Workaround today is `--security-opt
+label=disable` on the agent service. Open an issue if you hit this; a
+documented stack-template toggle is on the roadmap.
+
 ### Permissions
 
 Forwarding to a task on the **protected (infrastructure) stack** is
