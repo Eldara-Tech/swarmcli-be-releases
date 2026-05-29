@@ -36,6 +36,15 @@ genuinely want to redeploy, follow
 [Bootstrap — Re-bootstrap](bootstrap.md#re-bootstrap-and-teardown) — do
 not reach for `--force` on a live cluster.
 
+**A worker-node shell times out (`waiting for attach: … i/o timeout`) while
+manager-node shells work**, or `:bootstrap --upgrade` reports the stack
+*"predates application-layer agent-net TLS (encrypted overlay)"*.
+The stack still uses the legacy encrypted `swarmcli-agent-net` overlay, which
+Docker tunnels over IPsec ESP; clusters that block ESP drop the worker hop.
+Run `:bootstrap --migrate` to move to application-layer mTLS. It is
+**non-destructive** — your CA, admin token, managed context and RBAC database
+are preserved (no re-onboarding). See [Migration](migration.md).
+
 **Bootstrap fails at "deploy stack" with a port-in-use error.**
 Another process on the manager is bound to the chosen port (default
 `2376`). Either free the port, or pick another:

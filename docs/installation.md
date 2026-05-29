@@ -138,3 +138,9 @@ contents.
 The compatibility matrix between BE, the bundled CE codebase, and the
 agent/rbac-proxy versions is published in each release's notes — see
 [Releases](https://github.com/Eldara-Tech/swarmcli-be-releases/releases).
+
+Upgrading the binary does not change an already-deployed infra stack. To
+refresh the agent/rbac-proxy images in place, run `:bootstrap --upgrade`.
+A stack first deployed before application-layer mTLS (encrypted `agent-net`)
+needs a one-time, non-destructive `:bootstrap --migrate` instead — see
+[Migration](migration.md).
