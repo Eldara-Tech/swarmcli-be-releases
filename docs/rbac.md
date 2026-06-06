@@ -48,13 +48,10 @@ Two roles are defined: `admin` and `user`.
 The "protected stack" is the bootstrap stack itself (default
 `swarmcli-infra`). Read-only operations are unrestricted; mutations and
 exec into the proxy/agent infrastructure are blocked for non-admins, and
-**port-forwarding into the protected stack is blocked even for admins**
-— a long-lived TCP tunnel through the proxy you administer is a foot-gun
-and an exfil channel an admin-cert compromise could exploit (same
-rationale as the network-pivot block). Network-pivot, swarm-leave, and
-protected-stack port-forward are blocked for **everyone** going through
-the proxy — these are guards against admin-cert compromise, not role
-gates.
+**port-forwarding into the protected stack is blocked even for admins**.
+Network-pivot, swarm-leave, and protected-stack port-forward are blocked
+for **everyone** going through the proxy — these are guards against
+admin-cert compromise, not role gates.
 
 The bootstrap admin user (default username `admin`) is created at proxy
 startup from the `PROXY_SEED_USERNAME` / `PROXY_SEED_ROLE` env vars in the

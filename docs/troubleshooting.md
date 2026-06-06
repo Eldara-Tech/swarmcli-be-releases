@@ -125,10 +125,9 @@ listener as soon as the agent reports `dial: connection refused`.
 
 **"forward closed: agent disconnected."**
 The on-node agent is unreachable: the agent service has crashed or
-restarted, or the overlay path between the rbac-proxy and the agent
-broke. Run `:bootstrap --check` to verify the infrastructure stack is
-healthy. The forward does **not** auto-reconnect — reopen it once the
-agent is back.
+restarted, or its network path broke. Run `:bootstrap --check` to verify
+the infrastructure stack is healthy. The forward does **not**
+auto-reconnect — reopen it once the agent is back.
 
 **"forward target task is no longer running."**
 The container backing the forward has restarted, scaled away, or moved
@@ -137,9 +136,8 @@ is alive when you reopen, which may now live on a different node.
 
 **"forward on protected stack is not permitted" (admin gets a 403).**
 Port-forwarding into the bootstrap stack itself (default
-`swarmcli-infra`) is blocked for everyone — admin too. Use the host
-Docker socket on a manager node, or the proxy's internal listener
-(`PROXY_INTERNAL_LISTEN`).
+`swarmcli-infra`) is blocked for everyone — admin too. This is by design;
+there is no override.
 
 **"Permission denied: forwarding to <stack> requires admin role."**
 Non-admin user attempting to forward to a target gated to admin only.

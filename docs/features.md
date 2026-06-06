@@ -129,21 +129,13 @@ If the service has multiple replicas a picker dialog lists each running
 task; pick one and the forward targets that specific task. Single-replica
 services skip the picker.
 
-### Wire path
+### How it routes
 
-```mermaid
-flowchart LR
-  tui["TUI (swarmcli)<br/>net.Listen 127.0.0.1:LP"]
-  proxy["rbac-proxy<br/>/v1/forward"]
-  am["agent-manager<br/>/v1/forward"]
-  ag["agent (per node)<br/>/v1/forward"]
-  ctr[("container_ip:RP")]
-
-  tui -- "WSS, mTLS<br/>?task_id&container_port<br/>(one WS per accepted local conn)" --> proxy
-  proxy -- "ExecGuard<br/>(role + protected-stack)" --> am
-  am -- "task_id → container_id<br/>+ resolve agent IP" --> ag
-  ag -- "TCP dial container_ip:RP" --> ctr
-```
+Port-forward traffic travels over the same authenticated proxy path as
+`exec` and `logs`: the local listener on `127.0.0.1` tunnels through the
+rbac-proxy to the on-node agent, which connects to the target container.
+Who is allowed to forward is enforced centrally — see
+[Permissions](#permissions) and [RBAC — Roles](rbac.md#roles).
 
 ### Bind address policy
 
@@ -194,21 +186,16 @@ A forward does not survive these events:
 
 ### Host kernel requirements
 
-The agent dials `127.0.0.1:<port>` **inside the target container's
-network namespace** via `setns(2)` — the same mechanism `docker exec`
-uses internally. This requires two capabilities on the agent service,
-which the bootstrap stack template grants automatically:
+Port-forwarding into a container requires two Linux capabilities on the
+agent service, which the bootstrap stack template grants automatically:
 
 | Capability | Why |
 |---|---|
-| `CAP_SYS_ADMIN` | Required for the `setns(2)` call into the target's net namespace. |
-| `CAP_SYS_PTRACE` | Required to open `/hostproc/<pid>/ns/net` when the target container's PID 1 runs as a **non-root** uid. The kernel gates the symlink read through `ptrace_may_access`, which passes on either uid match or `CAP_SYS_PTRACE` in the target's user namespace. Containers that drop privileges (mysql=999, postgres=70, redis=999, grafana=472, prometheus=65534, …) all rely on this cap. |
+| `CAP_SYS_ADMIN` | Lets the agent reach the target container's network to dial the forwarded port. |
+| `CAP_SYS_PTRACE` | Required when the target container's main process runs as a **non-root** user. Containers that drop privileges (databases, monitoring stacks, and similar) rely on this. |
 
 Yama enforcement (`/proc/sys/kernel/yama/ptrace_scope = 1`, the default
-on Ubuntu / Debian / Fedora) is fully supported. The agent also
-bind-mounts the host's `/proc` at `/hostproc:ro` and reads
-`HOST_PROC=/hostproc` so it can resolve host-level container PIDs from
-its own PID namespace.
+on Ubuntu / Debian / Fedora) is fully supported.
 
 If you bootstrapped on a swarm before `CAP_SYS_PTRACE` was granted by
 the template, re-run `:bootstrap` to apply the current stack spec. The
@@ -218,20 +205,16 @@ is absent, so the misconfiguration surfaces in
 port-forward attempt.
 
 **Known limitation — SELinux enforcing hosts.** RHEL / CentOS / Fedora
-with `container_t` enforcing may still deny the procfs ns-symlink read
-even with both caps present. Workaround today is `--security-opt
-label=disable` on the agent service. Open an issue if you hit this; a
-documented stack-template toggle is on the roadmap.
+with `container_t` enforcing may still deny port-forwarding even with
+both caps present. Workaround today is `--security-opt label=disable` on
+the agent service. Open an issue if you hit this; a documented
+stack-template toggle is on the roadmap.
 
 ### Permissions
 
 Forwarding to a task on the **protected (infrastructure) stack** is
-denied for **every external role — including admin**. This is stricter
-than exec, where admins are allowed: a long-lived TCP tunnel through
-the proxy you administer is a foot-gun and an exfil channel an
-admin-cert compromise could exploit. Legitimate admin port-forwarding
-into infrastructure must use the host Docker socket on a manager node
-or the internal listener.
+denied for **every role, including admin** — stricter than exec, where
+admins are allowed.
 
 Forwarding to any non-protected task is allowed for all authenticated
 users (same as exec).
@@ -244,20 +227,21 @@ See [RBAC — Roles](rbac.md#roles).
 |---|---|
 | `Port-forward requires Business Edition` | No valid license; open `:license`. |
 | `Permission denied: forwarding to <stack> requires admin role` | Non-admin user attempting to forward to a non-admin-allowed target. Use a different context. |
-| `forward on protected stack is not permitted` | Even an admin has tried to forward to the infrastructure stack. Use the host Docker socket or internal listener. |
+| `forward on protected stack is not permitted` | Even an admin has tried to forward to the infrastructure stack. This is blocked by design. |
 | `local port N is already in use` | Choose another port, or pass `0` for an OS-assigned ephemeral port. |
 | `local ports below 1024 are not supported; pick 1024–65535` | Use a non-privileged port. |
 | `forward closed: target port not reachable` | The container is up but nothing is listening on that port — typo, or the service hasn't bound yet. |
-| `forward closed: agent disconnected` | The on-node agent is down or the overlay path broke. Check `:bootstrap --check`. |
+| `forward closed: agent disconnected` | The on-node agent is down or its network path broke. Check `:bootstrap --check`. |
 | `forward target task is no longer running` | The container restarted or moved nodes. Reopen the forward. |
 
 ## Where the gates live
 
-All three features are registered as gated actions:
+All three features are license-gated — each is enabled only when the
+active license grants it:
 
-- Shell: `features.IsEnabled(license.FeatureShell)`
-- Reveal-secret: `features.IsEnabled(license.FeatureRevealSecret)`
-- Port-forward: `features.IsEnabled(license.FeaturePortForward)`
+- Shell
+- Reveal-secret
+- Port-forward
 
 Tier-to-feature mapping is centralised: today, both `be` and `trial`
 tiers grant all three features. See [License — Model](license.md#model).
