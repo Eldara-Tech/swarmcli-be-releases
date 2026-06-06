@@ -39,11 +39,21 @@ not reach for `--force` on a live cluster.
 **A worker-node shell times out (`waiting for attach: … i/o timeout`) while
 manager-node shells work**, or `:bootstrap --upgrade` reports the stack
 *"predates application-layer agent-net TLS (encrypted overlay)"*.
-The stack still uses the legacy encrypted `swarmcli-agent-net` overlay, which
-Docker tunnels over IPsec ESP; clusters that block ESP drop the worker hop.
-Run `:bootstrap --migrate` to move to application-layer mTLS. It is
+The stack still uses the legacy encrypted `swarmcli-agent-net` overlay, whose
+lower-level transport some clusters block, dropping connectivity to worker
+nodes. Run `:bootstrap --migrate` to move to application-layer mTLS. It is
 **non-destructive** — your CA, admin token, managed context and RBAC database
 are preserved (no re-onboarding). See [Migration](migration.md).
+
+**`:bootstrap --migrate` stops with "connected through the rbac-proxy … refuses
+to remove its own protected stack."**
+The active Docker context reaches the daemon *through* the proxy — a managed
+connection — so migrate cannot tear down the stack it would recreate. This
+happens when the context is a `<name>-managed` one, or when `DOCKER_HOST` /
+`DOCKER_CONTEXT` points at the proxy port. Migrate must run with **direct daemon
+access**: `:contexts` and select the original (non-`-managed`) context (or unset
+`DOCKER_HOST`), then retry. The stopped run makes no changes, so it is safe to
+re-run once you have switched.
 
 **Bootstrap fails at "deploy stack" with a port-in-use error.**
 Another process on the manager is bound to the chosen port (default
