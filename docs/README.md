@@ -20,6 +20,7 @@ bindings, search, contexts, and OSS environment variables, see the
 - [Installation](installation.md) — install channels, first run, edition check.
 - [License](license.md) — acquiring a key, activation paths, grace period, tiers.
 - [Bootstrap](bootstrap.md) — `:bootstrap` end-to-end: what gets deployed and how.
+- [Migration](migration.md) — moving an existing stack to application-layer mTLS (`:bootstrap --migrate`).
 - [RBAC](rbac.md) — managing users, roles, onboarding, and revocation.
 - [Features](features.md) — shell and reveal-secret in detail.
 - [Configuration](configuration.md) — BE environment variables and on-disk paths.

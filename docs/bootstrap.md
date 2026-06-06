@@ -130,6 +130,8 @@ To skip the interactive prompt, pass `--port`:
 | Flag | Effect |
 |---|---|
 | `--check` | Report which infra services are running. Always allowed, including from a managed context. |
+| `--upgrade` | Images-only re-deploy of the infra services to the compat-pinned tags. Touches nothing else — no TLS, secrets, admin token, context or RBAC DB — so it cannot sever identity. Rolling restart of the services; allowed from a managed context (the proxy enforces the admin role). If the stack predates app-layer mTLS, `--upgrade` refuses and points you at `--migrate`. |
+| `--migrate` | Migrate a pre-mTLS stack (encrypted `agent-net`) to application-layer mTLS. **Non-destructive** — preserves the CA, admin token, managed context and RBAC DB. **Run from the original (non-managed) context** — see [Migration](migration.md). |
 | `--port N` | Use port `N` (1–65535). Skips the interactive prompt. |
 | `--host H` | Pre-fill or override the proxy host. Pre-fills the field in the interactive prompt; combined with `--port`, runs unattended. See [Host autodetection](#host-autodetection). |
 | `--force` | Redeploy even if the stack is already running. **Not recommended on a live cluster** — see [Re-bootstrap](#re-bootstrap-and-teardown). |
