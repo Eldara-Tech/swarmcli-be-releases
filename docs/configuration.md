@@ -14,12 +14,13 @@ see the
 | `SWARMCLI_PROXY_URL` | WebSocket URL of the rbac-proxy. Auto-derived from the active Docker context if unset. | unset | shell connect |
 | `SWARMCLI_REVEAL_IMAGE` | Image used for the temporary service that reveals a secret. | `alpine:latest` | reveal action |
 | `SWARMCLI_SHELL_CMD` | Shell command to exec when opening a shell into a task. If unset, the agent auto-detects (`bash` → `sh` → `ash`). | unset | shell connect |
+| `SWARMCLI_FORWARD_IDLE_TIMEOUT` | Idle timeout for an active port-forward (no traffic in either direction). Accepts any Go duration; capped at `24h`. | `30m` | per-forward, evaluated continuously |
 | `SWARMCLI_LICENSE_PUBKEY` | **Dev only** — base64 Ed25519 public key override. Honoured only when `SWARMCLI_ENV=dev`; ignored in production builds. | unset | startup |
 
 See [License — Activation](license.md#activation) for the precedence
 between `SWARMCLI_LICENSE` and the license file, and
-[Features](features.md) for how `SWARMCLI_REVEAL_IMAGE` and
-`SWARMCLI_SHELL_CMD` are used.
+[Features](features.md) for how `SWARMCLI_REVEAL_IMAGE`,
+`SWARMCLI_SHELL_CMD`, and `SWARMCLI_FORWARD_IDLE_TIMEOUT` are used.
 
 ## On-disk paths
 

@@ -1,7 +1,7 @@
 # Pro features
 
-Two license-gated capabilities ride on top of the standard SwarmCLI TUI.
-Both require:
+Three license-gated capabilities ride on top of the standard SwarmCLI TUI.
+All three require:
 
 - A valid (or in-grace) Business Edition license — see [License](license.md).
 - A managed Docker context (i.e. a Swarm that has been put through
@@ -117,12 +117,131 @@ don't trust to read the cleartext.
 | Image pull failure | `SWARMCLI_REVEAL_IMAGE` cannot be pulled by the node. Use an image already cached on the node, or pre-pull. |
 | `Forbidden` (403) | A non-admin user is invoking reveal — the underlying `service create` is gated. Switch to an admin context. |
 
+## Port-forward a container port
+
+Press `w` on any row in the Services view to open a port-forward dialog,
+or use the command bar: `:port-forward <service> <local>:<remote>`
+(alias `:pf <service> <local>:<remote>`). This forwards a port on your
+local machine to a port inside one of the service's running tasks —
+analogous to `kubectl port-forward`.
+
+If the service has multiple replicas a picker dialog lists each running
+task; pick one and the forward targets that specific task. Single-replica
+services skip the picker.
+
+### How it routes
+
+Port-forward traffic travels over the same authenticated proxy path as
+`exec` and `logs`: the local listener on `127.0.0.1` tunnels through the
+rbac-proxy to the on-node agent, which connects to the target container.
+Who is allowed to forward is enforced centrally — see
+[Permissions](#permissions) and [RBAC — Roles](rbac.md#roles).
+
+### Bind address policy
+
+The local listener always binds `127.0.0.1`. This is **not** configurable
+— exposing a forwarded internal service on `0.0.0.0` is too easy to do
+by accident, especially on laptops on shared networks. If you need to
+share a forwarded port with a teammate, use a separate tunnel.
+
+Local ports below 1024 are rejected at validation time (they would
+require root privileges and are easy to confuse with a system service).
+Use a port in the 1024–65535 range, or pass `0` to let the OS pick an
+ephemeral port — the chosen port is then displayed in the dialog.
+
+### Managing active forwards
+
+Open `:port-forwards` (alias `:pf`) to see a list of active forwards:
+
+| Column | Meaning |
+|--------|---------|
+| Service / Slot / Node | The replica the forward is bound to. |
+| Container | Truncated container ID. |
+| `LP→RP` | `127.0.0.1:LOCAL → CONTAINER_PORT`. |
+| State | `live`, `closing`, or `dead`. |
+| Bytes In / Out | Cumulative byte counts since the forward was opened. |
+| Conns | Currently open TCP connections through this forward. |
+
+Hotkeys in the list view: `Enter` inspect, `d` close, `r` close + reopen
+with the same ports.
+
+### Lifecycle
+
+A forward stays alive for the lifetime of the SwarmCLI process. Closing
+the dialog or navigating away from the list view does **not** tear it
+down — only an explicit `d` (close) or quitting the TUI ends a forward.
+On quit, every listener is drained and every WebSocket is closed cleanly
+before the process exits.
+
+A forward does not survive these events:
+
+- **Container restart or reschedule.** The forward dies; reopen it (the
+  new task may live on a different node, so silent re-resolution would
+  hide intent).
+- **Agent restart or unreachable.** The forward dies; the local listener
+  is closed so subsequent connection attempts fail loudly rather than
+  blackholing.
+- **30 minutes of zero traffic.** The idle timeout closes the forward.
+  Override via `SWARMCLI_FORWARD_IDLE_TIMEOUT` (capped at 24 h).
+
+### Host kernel requirements
+
+Port-forwarding into a container requires two Linux capabilities on the
+agent service, which the bootstrap stack template grants automatically:
+
+| Capability | Why |
+|---|---|
+| `CAP_SYS_ADMIN` | Lets the agent reach the target container's network to dial the forwarded port. |
+| `CAP_SYS_PTRACE` | Required when the target container's main process runs as a **non-root** user. Containers that drop privileges (databases, monitoring stacks, and similar) rely on this. |
+
+Yama enforcement (`/proc/sys/kernel/yama/ptrace_scope = 1`, the default
+on Ubuntu / Debian / Fedora) is fully supported.
+
+If you bootstrapped on a swarm before `CAP_SYS_PTRACE` was granted by
+the template, re-run `:bootstrap` to apply the current stack spec. The
+agent logs `WARN: agent missing CAP_SYS_PTRACE` at startup when the cap
+is absent, so the misconfiguration surfaces in
+`docker service logs <stack>_agent` rather than only on the next
+port-forward attempt.
+
+**Known limitation — SELinux enforcing hosts.** RHEL / CentOS / Fedora
+with `container_t` enforcing may still deny port-forwarding even with
+both caps present. Workaround today is `--security-opt label=disable` on
+the agent service. Open an issue if you hit this; a documented
+stack-template toggle is on the roadmap.
+
+### Permissions
+
+Forwarding to a task on the **protected (infrastructure) stack** is
+denied for **every role, including admin** — stricter than exec, where
+admins are allowed.
+
+Forwarding to any non-protected task is allowed for all authenticated
+users (same as exec).
+
+See [RBAC — Roles](rbac.md#roles).
+
+### Failure modes
+
+| What you see | Cause |
+|---|---|
+| `Port-forward requires Business Edition` | No valid license; open `:license`. |
+| `Permission denied: forwarding to <stack> requires admin role` | Non-admin user attempting to forward to a non-admin-allowed target. Use a different context. |
+| `forward on protected stack is not permitted` | Even an admin has tried to forward to the infrastructure stack. This is blocked by design. |
+| `local port N is already in use` | Choose another port, or pass `0` for an OS-assigned ephemeral port. |
+| `local ports below 1024 are not supported; pick 1024–65535` | Use a non-privileged port. |
+| `forward closed: target port not reachable` | The container is up but nothing is listening on that port — typo, or the service hasn't bound yet. |
+| `forward closed: agent disconnected` | The on-node agent is down or its network path broke. Check `:bootstrap --check`. |
+| `forward target task is no longer running` | The container restarted or moved nodes. Reopen the forward. |
+
 ## Where the gates live
 
-Both features are registered as gated actions:
+All three features are license-gated — each is enabled only when the
+active license grants it:
 
-- Shell: `features.IsEnabled(license.FeatureShell)`
-- Reveal-secret: `features.IsEnabled(license.FeatureRevealSecret)`
+- Shell
+- Reveal-secret
+- Port-forward
 
 Tier-to-feature mapping is centralised: today, both `be` and `trial`
-tiers grant both features. See [License — Model](license.md#model).
+tiers grant all three features. See [License — Model](license.md#model).
