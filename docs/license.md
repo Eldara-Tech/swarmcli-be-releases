@@ -122,7 +122,7 @@ Inside the TUI, `:license` shows current state:
 | Status: Invalid | Signature mismatch, malformed payload, or unknown tier. |
 | Status: Node limit exceeded | Cluster has more nodes than `max_nodes`. |
 | Status: User limit exceeded | RBAC store has more users than `max_users`. |
-| Status: Wrong swarm (license bound to a different cluster) | The key's `cluster_id` doesn't match the connected swarm. See [Per-swarm binding](#per-swarm-binding). |
+| Status: Wrong swarm (license bound to a different cluster) | The connected swarm differs from the one the license is bound to. See [Per-swarm binding](#per-swarm-binding). |
 
 The view also shows:
 
@@ -139,31 +139,28 @@ Key bindings inside the view:
 | Command | Effect |
 |---|---|
 | `:license` | Open the license view (default). |
-| `:license install <file>` | Install the token in `<file>` into this swarm's Docker Config (`swarmcli-license`). The token is validated locally first — the swarm never sees an invalid token. Requires a Docker context pointing at a swarm manager. |
-| `:license uninstall` | Remove the swarm-stored license. Does not touch the env var or the file fallback — the in-process cache reloads after removal, so if a file or env var is still set the license stays active from that source. |
+| `:license install <file>` | Install the token in `<file>` into this swarm's Docker Config (`swarmcli-license`). The token is validated before it is stored. Requires a Docker context pointing at a swarm manager. |
+| `:license uninstall` | Remove the swarm-stored license. Does not touch the env var or the file fallback — if a file or env var is still set, the license stays active from that source. |
 | `:license cluster-id` | Print the current swarm's cluster id (useful when contacting support to get a bound license issued). Works with no license loaded. |
 
 `:license install` refuses to overwrite an existing managed config — run
-`:license uninstall` first. It also refuses to touch a Config named
-`swarmcli-license` that lacks the `swarmcli.io/managed=true` label, so
-a user-created Config of the same name is never silently overwritten.
+`:license uninstall` first. It also won't touch a `swarmcli-license`
+Config that swarmcli didn't create, so a user-created Config of the same
+name is never silently overwritten.
 
 ## Per-swarm binding
 
 A license payload may include an optional `cluster_id` field that pins it
-to a single Docker Swarm. The runtime compares the value against the
-current swarm's `docker info → Swarm.Cluster.ID`. There are three cases:
+to a single Docker Swarm. There are three cases:
 
 - **Unbound** (`cluster_id` absent): the key verifies on any swarm. This
-  is the legacy / portable behaviour and is preserved for `trial` keys
-  and internal demos.
+  is the legacy / portable behaviour; `trial` keys are typically unbound.
 - **Bound, matching**: business as usual.
-- **Bound, mismatching**: the key is cryptographically fine but doesn't
-  match this swarm. Binding is **hard** — the status flips to
-  `Wrong swarm` on the next status read and Business Edition features
-  disable. Switching back to the bound swarm restores Valid on the very
-  next read; there is no clock to wait on. If you legitimately need to
-  operate against another swarm, get a license issued for that swarm.
+- **Bound, mismatching**: the key is cryptographically valid but is for a
+  different swarm. Business Edition features disable and `:license` shows
+  `Wrong swarm`; switching back to the bound swarm restores it immediately,
+  with no waiting period. If you legitimately need to operate against
+  another swarm, get a license issued for that swarm.
 
 ### Getting a bound license
 
@@ -195,12 +192,10 @@ swarm itself. This is the recommended deployment pattern:
 - Any operator with a docker context pointing at the swarm reads the
   same license — no per-engineer setup.
 - Removing a docker context removes that engineer's access to the
-  license (assuming the in-process cache is dropped — currently means
-  swarmcli restart).
+  license (after the next swarmcli restart).
 
-Install with `:license install <file>`. The Config is created with a
-reserved label `swarmcli.io/managed=true` so swarmcli can distinguish
-its own Config from any user-created Config of the same name.
+Install with `:license install <file>`. swarmcli marks the Config as its
+own so it can distinguish it from any user-created Config of the same name.
 
 ### MSPs / consultancies
 
