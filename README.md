@@ -8,6 +8,7 @@ Docker Swarm TUI — Business Edition. A single-binary superset of
 - Per-user RBAC, identity by client certificate.
 - Interactive shell into a running service task (`x` on a service).
 - Reveal-secret for debugging (`x` on a secret).
+- Volume management across all swarm nodes (list, create, delete, prune, file browse).
 
 ## Install
 
@@ -47,6 +48,7 @@ End-user documentation lives in [`docs/`](docs/):
 - [Bootstrap](docs/bootstrap.md)
 - [RBAC](docs/rbac.md)
 - [Features](docs/features.md)
+- [Volumes](docs/volumes.md)
 - [Configuration](docs/configuration.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
