@@ -60,3 +60,16 @@ are useful to know when operating the deployment:
 Changing these requires editing the deployed service (`docker service update`)
 or re-running `:bootstrap` from scratch — see
 [Bootstrap — Re-bootstrap](bootstrap.md#re-bootstrap-and-teardown).
+
+## Stack-side configuration (agent)
+
+One agent-side variable is worth knowing when using [Volumes](volumes.md):
+
+| Variable | Purpose | Set by bootstrap |
+|---|---|---|
+| `FILEOP_MAX_UPLOAD_BYTES` | Maximum size of a single volume file/directory upload; the agent rejects a larger payload with `413`. | `2147483648` (2 GiB). |
+
+Deployments bootstrapped before this was templated fall back to the agent's
+built-in 2 GiB default. Raise or lower it the same way as the proxy-side
+variables above — `docker service update` the agent service, or re-run
+`:bootstrap`.

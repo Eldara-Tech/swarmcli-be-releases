@@ -10,6 +10,8 @@ of the OSS feature set, BE adds:
   destructive and exec endpoints.
 - **Interactive shell into running services** (`x` on a service).
 - **Reveal-secret** for debugging (`x` on a secret).
+- **Volume management across all swarm nodes** — list, create, delete, prune,
+  and browse files inside volumes.
 
 These docs cover BE-specific topics. For general TUI navigation, key
 bindings, search, contexts, and OSS environment variables, see the
@@ -23,6 +25,7 @@ bindings, search, contexts, and OSS environment variables, see the
 - [Migration](migration.md) — moving an existing stack to application-layer mTLS (`:bootstrap --migrate`).
 - [RBAC](rbac.md) — managing users, roles, onboarding, and revocation.
 - [Features](features.md) — shell and reveal-secret in detail.
+- [Volumes](volumes.md) — listing across nodes, create/delete/prune, in-volume file browser.
 - [Configuration](configuration.md) — BE environment variables and on-disk paths.
 - [Troubleshooting](troubleshooting.md) — common errors and fixes.
 
