@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Eldara-Tech/swarmcli-be-releases/blob/main/SECURITY.md
+    about: Do not file security issues publicly. Report them privately to hello@eldara.io.
+  - name: Documentation
+    url: https://github.com/Eldara-Tech/swarmcli-be-releases/tree/main/docs
+    about: Installation, configuration, and troubleshooting guides.
