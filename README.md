@@ -52,6 +52,14 @@ End-user documentation lives in [`docs/`](docs/):
 - [Configuration](docs/configuration.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
+## Reporting issues
+
+Bug reports and feature requests for the Business Edition belong here — open an
+[issue](https://github.com/Eldara-Tech/swarmcli-be-releases/issues/new/choose).
+
+**Security:** do not file vulnerabilities publicly. See the
+[Security Policy](SECURITY.md) and email hello@eldara.io.
+
 ## Related
 
 - [swarmcli](https://github.com/Eldara-Tech/swarmcli) — Community Edition (OSS, Apache 2.0).
